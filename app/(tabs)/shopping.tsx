@@ -10,6 +10,7 @@ import {
   RefreshControl,
 } from 'react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useDatabase } from '../../src/hooks/useDatabase';
 import { useTheme } from '../../src/hooks/useTheme';
@@ -28,6 +29,7 @@ export default function ShoppingScreen() {
   const db = useDatabase();
   const router = useRouter();
   const { colors } = useTheme();
+  const insets = useSafeAreaInsets();
 
   const [items, setItems] = useState<ShoppingListItem[]>([]);
   const [suggestions, setSuggestions] = useState<FoodItem[]>([]);
@@ -120,7 +122,7 @@ export default function ShoppingScreen() {
   const uncheckedCount = items.filter(i => !i.checked).length;
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
+    <View style={[styles.container, { backgroundColor: colors.background, paddingTop: insets.top }]}>
       <View style={[styles.addRow, { backgroundColor: colors.surface }]}>
         <TextInput
           style={[styles.addInput, { backgroundColor: colors.background, color: colors.text, borderColor: colors.border }]}
@@ -135,7 +137,7 @@ export default function ShoppingScreen() {
           style={[styles.addBtn, { backgroundColor: colors.primary }]}
           onPress={handleAddItem}
         >
-          <Ionicons name="add" size={22} color="#FFFFFF" />
+          <Ionicons name="add" size={22} color={colors.primaryText} />
         </TouchableOpacity>
       </View>
 
@@ -263,7 +265,7 @@ const styles = StyleSheet.create({
   addInput: {
     flex: 1,
     borderWidth: 1,
-    borderRadius: 10,
+    borderRadius: 14,
     paddingHorizontal: 12,
     height: 40,
     fontSize: 15,
@@ -271,7 +273,7 @@ const styles = StyleSheet.create({
   addBtn: {
     width: 40,
     height: 40,
-    borderRadius: 10,
+    borderRadius: 14,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -301,7 +303,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     padding: 10,
-    borderRadius: 8,
+    borderRadius: 14,
     borderWidth: 1,
   },
   suggestionName: {
@@ -335,8 +337,8 @@ const styles = StyleSheet.create({
     gap: 10,
     marginHorizontal: 16,
     marginVertical: 3,
-    padding: 12,
-    borderRadius: 10,
+    padding: 14,
+    borderRadius: 16,
     borderWidth: 1,
   },
   listItemContent: {

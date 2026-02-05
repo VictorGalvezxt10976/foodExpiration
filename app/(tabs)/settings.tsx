@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -6,42 +6,18 @@ import {
   ScrollView,
   TouchableOpacity,
   Switch,
-  Alert,
+  TextInput,
 } from 'react-native';
-import { useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { useDatabase } from '../../src/hooks/useDatabase';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../src/hooks/useTheme';
-import { getSettings, setSettings } from '../../src/database/settings';
+import { useSettings } from '../../src/contexts/SettingsContext';
 import { AppSettings } from '../../src/types';
 
 export default function SettingsScreen() {
-  const db = useDatabase();
   const { colors } = useTheme();
-
-  const [settings, setLocalSettings] = useState<AppSettings>({
-    notifyDaysBefore: [3, 1, 0],
-    dailySummary: true,
-    currency: 'MXN',
-    theme: 'system',
-  });
-
-  const loadSettings = useCallback(async () => {
-    const s = await getSettings(db);
-    setLocalSettings(s);
-  }, [db]);
-
-  useFocusEffect(
-    useCallback(() => {
-      loadSettings();
-    }, [loadSettings])
-  );
-
-  const updateSetting = async (key: keyof AppSettings, value: AppSettings[keyof AppSettings]) => {
-    const updated = { ...settings, [key]: value };
-    setLocalSettings(updated);
-    await setSettings(db, { [key]: value });
-  };
+  const insets = useSafeAreaInsets();
+  const { settings, updateSetting } = useSettings();
 
   const toggleNotifyDay = async (day: number) => {
     const current = settings.notifyDaysBefore;
@@ -54,18 +30,26 @@ export default function SettingsScreen() {
   const notifyDays = [7, 3, 1, 0];
 
   const themes: { value: AppSettings['theme']; label: string; icon: keyof typeof Ionicons.glyphMap }[] = [
-    { value: 'system', label: 'Sistema', icon: 'phone-portrait' },
-    { value: 'light', label: 'Claro', icon: 'sunny' },
-    { value: 'dark', label: 'Oscuro', icon: 'moon' },
+    { value: 'system', label: 'Sistema', icon: 'phone-portrait-outline' },
+    { value: 'light', label: 'Claro', icon: 'sunny-outline' },
+    { value: 'dark', label: 'Oscuro', icon: 'moon-outline' },
   ];
 
-  const currencies = ['MXN', 'COP', 'ARS', 'CLP', 'PEN', 'BRL', 'UYU', 'BOB', 'GTQ', 'CRC', 'DOP', 'USD'];
+  const [apiKeyInput, setApiKeyInput] = useState(settings.openaiApiKey);
+  const [showApiKey, setShowApiKey] = useState(false);
+
+  const currencies = ['PEN', 'MXN', 'COP', 'ARS', 'CLP', 'BRL', 'UYU', 'BOB', 'GTQ', 'CRC', 'DOP', 'USD'];
+
+  const handleSaveApiKey = async (key: string) => {
+    setApiKeyInput(key);
+    await updateSetting('openaiApiKey', key);
+  };
 
   return (
-    <ScrollView style={[styles.container, { backgroundColor: colors.background }]}>
+    <ScrollView style={[styles.container, { backgroundColor: colors.background, paddingTop: insets.top }]}>
       <Text style={[styles.sectionTitle, { color: colors.text }]}>Notificaciones</Text>
 
-      <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
+      <View style={[styles.card, { backgroundColor: colors.card }, colors.shadow]}>
         <Text style={[styles.cardLabel, { color: colors.text }]}>Notificar antes del vencimiento</Text>
         <View style={styles.chipGroup}>
           {notifyDays.map(day => (
@@ -82,7 +66,7 @@ export default function SettingsScreen() {
             >
               <Text
                 style={{
-                  color: settings.notifyDaysBefore.includes(day) ? '#FFFFFF' : colors.text,
+                  color: settings.notifyDaysBefore.includes(day) ? colors.primaryText : colors.text,
                   fontSize: 13,
                   fontWeight: '500',
                 }}
@@ -94,7 +78,7 @@ export default function SettingsScreen() {
         </View>
       </View>
 
-      <View style={[styles.card, styles.rowCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+      <View style={[styles.card, styles.rowCard, { backgroundColor: colors.card }, colors.shadow]}>
         <View style={styles.rowCardContent}>
           <Text style={[styles.cardLabel, { color: colors.text }]}>Resumen diario</Text>
           <Text style={[styles.cardSubtext, { color: colors.textSecondary }]}>
@@ -111,7 +95,7 @@ export default function SettingsScreen() {
 
       <Text style={[styles.sectionTitle, { color: colors.text }]}>Apariencia</Text>
 
-      <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
+      <View style={[styles.card, { backgroundColor: colors.card }, colors.shadow]}>
         <Text style={[styles.cardLabel, { color: colors.text }]}>Tema</Text>
         <View style={styles.chipGroup}>
           {themes.map(t => (
@@ -129,11 +113,11 @@ export default function SettingsScreen() {
               <Ionicons
                 name={t.icon}
                 size={14}
-                color={settings.theme === t.value ? '#FFFFFF' : colors.textSecondary}
+                color={settings.theme === t.value ? colors.primaryText : colors.textSecondary}
               />
               <Text
                 style={{
-                  color: settings.theme === t.value ? '#FFFFFF' : colors.text,
+                  color: settings.theme === t.value ? colors.primaryText : colors.text,
                   fontSize: 13,
                   fontWeight: '500',
                 }}
@@ -147,7 +131,7 @@ export default function SettingsScreen() {
 
       <Text style={[styles.sectionTitle, { color: colors.text }]}>Moneda</Text>
 
-      <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
+      <View style={[styles.card, { backgroundColor: colors.card }, colors.shadow]}>
         <View style={styles.chipGroup}>
           {currencies.map(c => (
             <TouchableOpacity
@@ -163,7 +147,7 @@ export default function SettingsScreen() {
             >
               <Text
                 style={{
-                  color: settings.currency === c ? '#FFFFFF' : colors.text,
+                  color: settings.currency === c ? colors.primaryText : colors.text,
                   fontSize: 13,
                   fontWeight: '500',
                 }}
@@ -175,16 +159,50 @@ export default function SettingsScreen() {
         </View>
       </View>
 
+      <Text style={[styles.sectionTitle, { color: colors.text }]}>Integracion con IA</Text>
+
+      <View style={[styles.card, { backgroundColor: colors.card }, colors.shadow]}>
+        <View style={styles.aiHeader}>
+          <Text style={[styles.cardLabel, { color: colors.text }]}>API Key de OpenAI</Text>
+          {settings.openaiApiKey ? (
+            <View style={[styles.aiIndicator, { backgroundColor: '#4CAF50' + '20' }]}>
+              <Ionicons name="checkmark-circle" size={14} color="#4CAF50" />
+              <Text style={{ color: '#4CAF50', fontSize: 12, fontWeight: '500' }}>Configurada</Text>
+            </View>
+          ) : null}
+        </View>
+        <Text style={[styles.cardSubtext, { color: colors.textSecondary, marginBottom: 10 }]}>
+          Necesaria para generar recetas con IA. Obtenla en platform.openai.com
+        </Text>
+        <View style={styles.apiKeyRow}>
+          <TextInput
+            style={[styles.apiKeyInput, { backgroundColor: colors.surface, color: colors.text, borderColor: colors.border }]}
+            value={apiKeyInput}
+            onChangeText={handleSaveApiKey}
+            placeholder="sk-..."
+            placeholderTextColor={colors.textSecondary}
+            secureTextEntry={!showApiKey}
+            autoCapitalize="none"
+            autoCorrect={false}
+          />
+          <TouchableOpacity
+            style={[styles.apiKeyToggle, { backgroundColor: colors.surface, borderColor: colors.border }]}
+            onPress={() => setShowApiKey(!showApiKey)}
+          >
+            <Ionicons name={showApiKey ? 'eye-off' : 'eye'} size={18} color={colors.textSecondary} />
+          </TouchableOpacity>
+        </View>
+      </View>
+
       <Text style={[styles.sectionTitle, { color: colors.text }]}>Acerca de</Text>
 
-      <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
+      <View style={[styles.card, { backgroundColor: colors.card }, colors.shadow]}>
         <View style={styles.aboutRow}>
           <Text style={[styles.aboutLabel, { color: colors.textSecondary }]}>Aplicacion</Text>
           <Text style={[styles.aboutValue, { color: colors.text }]}>FreshKeep</Text>
         </View>
         <View style={styles.aboutRow}>
           <Text style={[styles.aboutLabel, { color: colors.textSecondary }]}>Version</Text>
-
           <Text style={[styles.aboutValue, { color: colors.text }]}>1.0.0</Text>
         </View>
       </View>
@@ -201,16 +219,15 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 16,
     fontWeight: '700',
-    paddingHorizontal: 16,
+    paddingHorizontal: 20,
     marginTop: 20,
     marginBottom: 8,
   },
   card: {
     marginHorizontal: 16,
     marginVertical: 4,
-    padding: 14,
-    borderRadius: 12,
-    borderWidth: 1,
+    padding: 16,
+    borderRadius: 16,
   },
   rowCard: {
     flexDirection: 'row',
@@ -222,30 +239,63 @@ const styles = StyleSheet.create({
   cardLabel: {
     fontSize: 15,
     fontWeight: '500',
-    marginBottom: 8,
+    marginBottom: 10,
   },
   cardSubtext: {
     fontSize: 13,
-    marginTop: -4,
+    marginTop: -6,
   },
   chipGroup: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 6,
+    gap: 8,
   },
   chip: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 16,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 20,
     borderWidth: 1,
+  },
+  aiHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  aiIndicator: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    marginBottom: 10,
+  },
+  apiKeyRow: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  apiKeyInput: {
+    flex: 1,
+    borderWidth: 1,
+    borderRadius: 14,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    fontSize: 14,
+  },
+  apiKeyToggle: {
+    borderWidth: 1,
+    borderRadius: 14,
+    width: 44,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   aboutRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    paddingVertical: 4,
+    paddingVertical: 6,
   },
   aboutLabel: {
     fontSize: 14,

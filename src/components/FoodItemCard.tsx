@@ -4,6 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { FoodItem } from '../types';
 import { useTheme } from '../hooks/useTheme';
 import { getExpirationLabel, daysUntilExpiration } from '../utils/dates';
+import { formatPrice } from '../utils/currency';
 import { CATEGORIES, STORAGE_LOCATIONS } from '../constants/categories';
 
 interface Props {
@@ -28,7 +29,7 @@ export function FoodItemCard({ item, onPress, onMarkConsumed, onMarkThrownAway }
 
   return (
     <TouchableOpacity
-      style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}
+      style={[styles.card, { backgroundColor: colors.card }, colors.shadow]}
       onPress={() => onPress(item)}
       activeOpacity={0.7}
     >
@@ -36,11 +37,13 @@ export function FoodItemCard({ item, onPress, onMarkConsumed, onMarkThrownAway }
       <View style={styles.content}>
         <View style={styles.header}>
           <View style={styles.titleRow}>
-            <Ionicons
-              name={category?.icon as keyof typeof Ionicons.glyphMap ?? 'ellipsis-horizontal'}
-              size={18}
-              color={colors.textSecondary}
-            />
+            <View style={[styles.categoryIcon, { backgroundColor: statusColor + '20' }]}>
+              <Ionicons
+                name={category?.icon as keyof typeof Ionicons.glyphMap ?? 'ellipsis-horizontal'}
+                size={16}
+                color={statusColor}
+              />
+            </View>
             <Text style={[styles.name, { color: colors.text }]} numberOfLines={1}>
               {item.name}
             </Text>
@@ -61,7 +64,7 @@ export function FoodItemCard({ item, onPress, onMarkConsumed, onMarkThrownAway }
 
         {item.price != null && (
           <Text style={[styles.price, { color: colors.textSecondary }]}>
-            {item.currency} {item.price.toFixed(2)}
+            {formatPrice(item.price, item.currency)}
           </Text>
         )}
 
@@ -69,18 +72,18 @@ export function FoodItemCard({ item, onPress, onMarkConsumed, onMarkThrownAway }
           {onMarkConsumed && (
             <TouchableOpacity
               onPress={() => onMarkConsumed(item)}
-              style={[styles.actionBtn, { backgroundColor: colors.success + '20' }]}
+              style={[styles.actionBtn, { backgroundColor: colors.primary + '30' }]}
             >
-              <Ionicons name="checkmark-circle" size={16} color={colors.success} />
-              <Text style={[styles.actionText, { color: colors.success }]}>Consumido</Text>
+              <Ionicons name="checkmark-circle" size={15} color={colors.primaryText} />
+              <Text style={[styles.actionText, { color: colors.primaryText }]}>Consumido</Text>
             </TouchableOpacity>
           )}
           {onMarkThrownAway && (
             <TouchableOpacity
               onPress={() => onMarkThrownAway(item)}
-              style={[styles.actionBtn, { backgroundColor: colors.danger + '20' }]}
+              style={[styles.actionBtn, { backgroundColor: colors.danger + '15' }]}
             >
-              <Ionicons name="trash" size={16} color={colors.danger} />
+              <Ionicons name="trash-outline" size={15} color={colors.danger} />
               <Text style={[styles.actionText, { color: colors.danger }]}>Tirar</Text>
             </TouchableOpacity>
           )}
@@ -93,18 +96,17 @@ export function FoodItemCard({ item, onPress, onMarkConsumed, onMarkThrownAway }
 const styles = StyleSheet.create({
   card: {
     flexDirection: 'row',
-    borderRadius: 12,
-    borderWidth: 1,
+    borderRadius: 16,
     marginHorizontal: 16,
-    marginVertical: 4,
+    marginVertical: 5,
     overflow: 'hidden',
   },
   statusBar: {
-    width: 4,
+    width: 5,
   },
   content: {
     flex: 1,
-    padding: 12,
+    padding: 14,
   },
   header: {
     flexDirection: 'row',
@@ -115,7 +117,14 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     flex: 1,
-    gap: 6,
+    gap: 10,
+  },
+  categoryIcon: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   name: {
     fontSize: 16,
@@ -129,7 +138,7 @@ const styles = StyleSheet.create({
   details: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginTop: 4,
+    marginTop: 8,
   },
   expiration: {
     fontSize: 13,
@@ -141,20 +150,20 @@ const styles = StyleSheet.create({
   },
   price: {
     fontSize: 12,
-    marginTop: 2,
+    marginTop: 4,
   },
   actions: {
     flexDirection: 'row',
     gap: 8,
-    marginTop: 8,
+    marginTop: 10,
   },
   actionBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 16,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
   },
   actionText: {
     fontSize: 12,

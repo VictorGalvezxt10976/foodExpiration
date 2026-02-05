@@ -6,37 +6,54 @@ import {
   ScrollView,
   TouchableOpacity,
   RefreshControl,
+  Alert,
 } from 'react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useDatabase } from '../../src/hooks/useDatabase';
 import { useTheme } from '../../src/hooks/useTheme';
-import { getInventoryStats, getExpiringItems, getExpiredItems, updateFoodItem } from '../../src/database/foodItems';
-import { FoodItem } from '../../src/types';
-import { StatCard } from '../../src/components/StatCard';
-import { FoodItemCard } from '../../src/components/FoodItemCard';
+import { getDailyNutrition, deleteMeal } from '../../src/database/meals';
+import { getExpiringItems, getExpiredItems } from '../../src/database/foodItems';
+import { DailyNutrition, Meal, MealType, FoodItem } from '../../src/types';
+import { DateSelector } from '../../src/components/DateSelector';
+import { MealTypeFilter } from '../../src/components/MealTypeFilter';
+import { MealCard } from '../../src/components/MealCard';
+import { NutritionSummary } from '../../src/components/NutritionSummary';
 import { EmptyState } from '../../src/components/EmptyState';
+import { getTodayString } from '../../src/utils/dates';
+import { getExpirationLabel } from '../../src/utils/dates';
 
 export default function HomeScreen() {
   const db = useDatabase();
   const router = useRouter();
   const { colors } = useTheme();
+  const insets = useSafeAreaInsets();
 
-  const [stats, setStats] = useState({ total: 0, fresh: 0, expiring: 0, expired: 0, totalValue: 0, wastedValue: 0 });
+  const [selectedDate, setSelectedDate] = useState(getTodayString());
+  const [mealFilter, setMealFilter] = useState<MealType | 'all'>('all');
+  const [nutrition, setNutrition] = useState<DailyNutrition>({
+    date: getTodayString(),
+    totalCalories: 0,
+    totalProtein: 0,
+    totalFats: 0,
+    totalCarbs: 0,
+    meals: [],
+  });
   const [expiringItems, setExpiringItems] = useState<FoodItem[]>([]);
-  const [expiredItems, setExpiredItems] = useState<FoodItem[]>([]);
+  const [expiredCount, setExpiredCount] = useState(0);
   const [refreshing, setRefreshing] = useState(false);
 
   const loadData = useCallback(async () => {
-    const [s, expiring, expired] = await Promise.all([
-      getInventoryStats(db),
+    const [daily, expiring, expired] = await Promise.all([
+      getDailyNutrition(db, selectedDate),
       getExpiringItems(db, 3),
       getExpiredItems(db),
     ]);
-    setStats(s);
-    setExpiringItems(expiring);
-    setExpiredItems(expired);
-  }, [db]);
+    setNutrition(daily);
+    setExpiringItems(expiring.slice(0, 3));
+    setExpiredCount(expired.length);
+  }, [db, selectedDate]);
 
   useFocusEffect(
     useCallback(() => {
@@ -50,100 +67,116 @@ export default function HomeScreen() {
     setRefreshing(false);
   };
 
-  const handleMarkConsumed = async (item: FoodItem) => {
-    await updateFoodItem(db, item.id, { disposition: 'consumed' });
-    loadData();
+  const handleDateChange = (date: string) => {
+    setSelectedDate(date);
   };
 
-  const handleMarkThrownAway = async (item: FoodItem) => {
-    await updateFoodItem(db, item.id, { disposition: 'thrown_away' });
-    loadData();
+  const handleDeleteMeal = async (meal: Meal) => {
+    Alert.alert(
+      'Eliminar comida',
+      `Quieres eliminar "${meal.name}"?`,
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Eliminar',
+          style: 'destructive',
+          onPress: async () => {
+            await deleteMeal(db, meal.id);
+            loadData();
+          },
+        },
+      ]
+    );
   };
 
-  const handleItemPress = (item: FoodItem) => {
-    router.push({ pathname: '/edit-item', params: { id: item.id } });
-  };
+  const filteredMeals = mealFilter === 'all'
+    ? nutrition.meals
+    : nutrition.meals.filter(m => m.mealType === mealFilter);
+
+  const alertItems = [...expiringItems];
+  const totalAlerts = expiredCount + expiringItems.length;
 
   return (
     <ScrollView
-      style={[styles.container, { backgroundColor: colors.background }]}
+      style={[styles.container, { backgroundColor: colors.background, paddingTop: insets.top }]}
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}
     >
       <View style={styles.header}>
         <Text style={[styles.title, { color: colors.text }]}>FreshKeep</Text>
-        <TouchableOpacity
-          style={[styles.addButton, { backgroundColor: colors.primary }]}
-          onPress={() => router.push('/add-item')}
-        >
-          <Ionicons name="add" size={24} color="#FFFFFF" />
-        </TouchableOpacity>
+        <View style={styles.headerActions}>
+          <TouchableOpacity
+            style={[styles.headerBtn, { backgroundColor: colors.card }, colors.shadow]}
+            onPress={() => router.push('/ai-recipes')}
+          >
+            <Ionicons name="sparkles" size={20} color={colors.accent} />
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.addButton, { backgroundColor: colors.primary }, colors.shadow]}
+            onPress={() => router.push({ pathname: '/add-meal', params: { date: selectedDate } })}
+          >
+            <Ionicons name="add" size={24} color={colors.primaryText} />
+          </TouchableOpacity>
+        </View>
       </View>
 
-      <View style={styles.statsRow}>
-        <StatCard title="Total" value={stats.total} icon="cube" color={colors.primary} />
-        <StatCard title="Frescos" value={stats.fresh} icon="checkmark-circle" color={colors.statusFresh} />
-        <StatCard title="Por vencer" value={stats.expiring} icon="warning" color={colors.statusExpiring} />
-      </View>
+      <DateSelector selectedDate={selectedDate} onDateChange={handleDateChange} />
 
-      {stats.expired > 0 && (
-        <View style={[styles.alertBanner, { backgroundColor: colors.statusExpired + '15' }]}>
-          <Ionicons name="alert-circle" size={20} color={colors.statusExpired} />
-          <Text style={[styles.alertText, { color: colors.statusExpired }]}>
-            {stats.expired} producto{stats.expired !== 1 ? 's' : ''} vencido{stats.expired !== 1 ? 's' : ''}
-          </Text>
-        </View>
-      )}
+      <View style={{ height: 12 }} />
 
-      {expiredItems.length > 0 && (
-        <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: colors.statusExpired }]}>Vencidos</Text>
-          {expiredItems.slice(0, 5).map(item => (
-            <FoodItemCard
-              key={item.id}
-              item={item}
-              onPress={handleItemPress}
-              onMarkConsumed={handleMarkConsumed}
-              onMarkThrownAway={handleMarkThrownAway}
-            />
-          ))}
-          {expiredItems.length > 5 && (
-            <TouchableOpacity onPress={() => router.push('/inventory')}>
-              <Text style={[styles.seeAll, { color: colors.primary }]}>
-                Ver los {expiredItems.length} productos vencidos
-              </Text>
-            </TouchableOpacity>
-          )}
-        </View>
-      )}
+      <NutritionSummary nutrition={nutrition} />
 
-      {expiringItems.length > 0 && (
-        <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: colors.statusExpiring }]}>Por Vencer</Text>
-          {expiringItems.slice(0, 5).map(item => (
-            <FoodItemCard
-              key={item.id}
-              item={item}
-              onPress={handleItemPress}
-              onMarkConsumed={handleMarkConsumed}
-              onMarkThrownAway={handleMarkThrownAway}
-            />
-          ))}
-          {expiringItems.length > 5 && (
-            <TouchableOpacity onPress={() => router.push('/inventory')}>
-              <Text style={[styles.seeAll, { color: colors.primary }]}>
-                Ver los {expiringItems.length} productos por vencer
-              </Text>
-            </TouchableOpacity>
-          )}
-        </View>
-      )}
+      <View style={{ height: 12 }} />
 
-      {stats.total === 0 && (
+      <MealTypeFilter selected={mealFilter} onSelect={setMealFilter} />
+
+      <View style={{ height: 8 }} />
+
+      {filteredMeals.length > 0 ? (
+        filteredMeals.map(meal => (
+          <MealCard
+            key={meal.id}
+            meal={meal}
+            onDelete={handleDeleteMeal}
+          />
+        ))
+      ) : (
         <EmptyState
-          icon="nutrition"
-          title="Sin productos"
-          message="Toca el boton + para agregar tu primer producto y comenzar a rastrear fechas de vencimiento."
+          icon="restaurant-outline"
+          title="Sin comidas"
+          message="Toca el boton + para registrar tu primera comida del dia."
         />
+      )}
+
+      {totalAlerts > 0 && (
+        <View style={styles.alertSection}>
+          <View style={[styles.alertBanner, { backgroundColor: colors.statusExpired + '15' }]}>
+            <View style={[styles.alertIconBg, { backgroundColor: colors.statusExpired + '25' }]}>
+              <Ionicons name="alert-circle" size={18} color={colors.statusExpired} />
+            </View>
+            <Text style={[styles.alertText, { color: colors.text }]}>
+              {expiredCount > 0 && `${expiredCount} vencido${expiredCount !== 1 ? 's' : ''}`}
+              {expiredCount > 0 && expiringItems.length > 0 && ' · '}
+              {expiringItems.length > 0 && `${expiringItems.length} por vencer`}
+            </Text>
+            <TouchableOpacity onPress={() => router.push('/(tabs)/inventory')}>
+              <Text style={[styles.alertLink, { color: colors.primary }]}>Ver</Text>
+            </TouchableOpacity>
+          </View>
+
+          {alertItems.map(item => (
+            <View key={item.id} style={[styles.alertItem, { backgroundColor: colors.card }, colors.shadow]}>
+              <View style={[styles.alertDot, {
+                backgroundColor: item.status === 'expired' ? colors.statusExpired : colors.statusExpiring,
+              }]} />
+              <Text style={[styles.alertItemName, { color: colors.text }]} numberOfLines={1}>
+                {item.name}
+              </Text>
+              <Text style={[styles.alertItemLabel, { color: colors.textSecondary }]}>
+                {getExpirationLabel(item.expirationDate)}
+              </Text>
+            </View>
+          ))}
+        </View>
       )}
 
       <View style={{ height: 32 }} />
@@ -159,53 +192,78 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingTop: 16,
-    paddingBottom: 12,
+    paddingHorizontal: 20,
+    paddingTop: 12,
+    paddingBottom: 16,
   },
   title: {
-    fontSize: 28,
-    fontWeight: '700',
+    fontSize: 32,
+    fontWeight: '800',
   },
-  addButton: {
+  headerActions: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  headerBtn: {
     width: 44,
     height: 44,
     borderRadius: 22,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  statsRow: {
-    flexDirection: 'row',
+  addButton: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  alertSection: {
+    marginTop: 16,
     paddingHorizontal: 16,
-    gap: 10,
-    marginBottom: 16,
+    gap: 6,
   },
   alertBanner: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    marginHorizontal: 16,
+    gap: 10,
     padding: 12,
-    borderRadius: 10,
-    marginBottom: 16,
+    borderRadius: 14,
+  },
+  alertIconBg: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   alertText: {
-    fontSize: 14,
+    fontSize: 13,
+    fontWeight: '500',
+    flex: 1,
+  },
+  alertLink: {
+    fontSize: 13,
     fontWeight: '600',
   },
-  section: {
-    marginBottom: 16,
+  alertItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    padding: 12,
+    borderRadius: 12,
   },
-  sectionTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    paddingHorizontal: 16,
-    marginBottom: 8,
+  alertDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
   },
-  seeAll: {
-    textAlign: 'center',
+  alertItemName: {
     fontSize: 14,
     fontWeight: '500',
-    paddingVertical: 8,
+    flex: 1,
+  },
+  alertItemLabel: {
+    fontSize: 12,
   },
 });

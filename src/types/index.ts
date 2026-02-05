@@ -46,16 +46,74 @@ export interface ShoppingListItem {
   createdAt: string;
 }
 
+export type MealType = 'breakfast' | 'lunch' | 'dinner' | 'snack';
+
+export type MealSource = 'manual' | 'ai';
+
+export interface Meal {
+  id: string;
+  name: string;
+  mealType: MealType;
+  date: string; // ISO date string YYYY-MM-DD
+  calories: number;
+  protein: number;
+  fats: number;
+  carbs: number;
+  servingSize: string;
+  emoji: string;
+  notes: string;
+  source: MealSource;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface MealItem {
+  id: string;
+  mealId: string;
+  foodItemId: string | null;
+  name: string;
+  quantity: number;
+  unit: string;
+  calories: number;
+  protein: number;
+  fats: number;
+  carbs: number;
+}
+
+export interface DailyNutrition {
+  date: string;
+  totalCalories: number;
+  totalProtein: number;
+  totalFats: number;
+  totalCarbs: number;
+  meals: Meal[];
+}
+
+export interface RecipeSuggestion {
+  name: string;
+  emoji: string;
+  description: string;
+  servingSize: string;
+  calories: number;
+  protein: number;
+  fats: number;
+  carbs: number;
+  ingredients: string[];
+  instructions: string[];
+}
+
 export interface AppSettings {
   notifyDaysBefore: number[];
   dailySummary: boolean;
   currency: string;
   theme: 'light' | 'dark' | 'system';
+  openaiApiKey: string;
 }
 
 export const DEFAULT_SETTINGS: AppSettings = {
   notifyDaysBefore: [3, 1, 0],
   dailySummary: true,
-  currency: 'MXN',
+  currency: 'PEN',
   theme: 'system',
+  openaiApiKey: '',
 };

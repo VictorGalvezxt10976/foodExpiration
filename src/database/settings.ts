@@ -14,6 +14,7 @@ export async function getSettings(db: SQLite.SQLiteDatabase): Promise<AppSetting
       : DEFAULT_SETTINGS.dailySummary,
     currency: map.get('currency') ?? DEFAULT_SETTINGS.currency,
     theme: (map.get('theme') as AppSettings['theme']) ?? DEFAULT_SETTINGS.theme,
+    openaiApiKey: map.get('openaiApiKey') ?? DEFAULT_SETTINGS.openaiApiKey,
   };
 }
 

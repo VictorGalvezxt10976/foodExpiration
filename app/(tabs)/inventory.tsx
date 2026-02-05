@@ -9,9 +9,11 @@ import {
   RefreshControl,
 } from 'react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useDatabase } from '../../src/hooks/useDatabase';
 import { useTheme } from '../../src/hooks/useTheme';
+import { useSettings } from '../../src/contexts/SettingsContext';
 import { getFoodItems, updateFoodItem } from '../../src/database/foodItems';
 import { FoodItem, FoodCategory } from '../../src/types';
 import { FoodItemCard } from '../../src/components/FoodItemCard';
@@ -24,6 +26,8 @@ export default function InventoryScreen() {
   const db = useDatabase();
   const router = useRouter();
   const { colors } = useTheme();
+  const { rescheduleNotifications } = useSettings();
+  const insets = useSafeAreaInsets();
 
   const [items, setItems] = useState<FoodItem[]>([]);
   const [search, setSearch] = useState('');
@@ -54,11 +58,13 @@ export default function InventoryScreen() {
 
   const handleMarkConsumed = async (item: FoodItem) => {
     await updateFoodItem(db, item.id, { disposition: 'consumed' });
+    await rescheduleNotifications();
     loadData();
   };
 
   const handleMarkThrownAway = async (item: FoodItem) => {
     await updateFoodItem(db, item.id, { disposition: 'thrown_away' });
+    await rescheduleNotifications();
     loadData();
   };
 
@@ -74,7 +80,7 @@ export default function InventoryScreen() {
   ];
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
+    <View style={[styles.container, { backgroundColor: colors.background, paddingTop: insets.top }]}>
       <View style={[styles.searchRow, { backgroundColor: colors.surface }]}>
         <View style={[styles.searchBar, { backgroundColor: colors.background, borderColor: colors.border }]}>
           <Ionicons name="search" size={18} color={colors.textSecondary} />
@@ -95,7 +101,7 @@ export default function InventoryScreen() {
           style={[styles.addBtn, { backgroundColor: colors.primary }]}
           onPress={() => router.push('/add-item')}
         >
-          <Ionicons name="add" size={22} color="#FFFFFF" />
+          <Ionicons name="add" size={22} color={colors.primaryText} />
         </TouchableOpacity>
       </View>
 
@@ -120,7 +126,7 @@ export default function InventoryScreen() {
               <Text
                 style={[
                   styles.filterText,
-                  { color: selectedStatus === f.value ? '#FFFFFF' : colors.text },
+                  { color: selectedStatus === f.value ? colors.primaryText : colors.text },
                 ]}
               >
                 {f.label}
@@ -151,12 +157,12 @@ export default function InventoryScreen() {
               <Ionicons
                 name={c.icon as keyof typeof Ionicons.glyphMap}
                 size={14}
-                color={selectedCategory === c.value ? '#FFFFFF' : colors.textSecondary}
+                color={selectedCategory === c.value ? colors.primaryText : colors.textSecondary}
               />
               <Text
                 style={[
                   styles.filterText,
-                  { color: selectedCategory === c.value ? '#FFFFFF' : colors.text },
+                  { color: selectedCategory === c.value ? colors.primaryText : colors.text },
                 ]}
               >
                 {c.label}
@@ -207,7 +213,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     borderWidth: 1,
-    borderRadius: 10,
+    borderRadius: 14,
     paddingHorizontal: 10,
     height: 40,
     gap: 6,
@@ -220,7 +226,7 @@ const styles = StyleSheet.create({
   addBtn: {
     width: 40,
     height: 40,
-    borderRadius: 10,
+    borderRadius: 14,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -237,7 +243,7 @@ const styles = StyleSheet.create({
     gap: 4,
     paddingHorizontal: 12,
     paddingVertical: 6,
-    borderRadius: 16,
+    borderRadius: 20,
     borderWidth: 1,
   },
   filterText: {

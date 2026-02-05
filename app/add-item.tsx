@@ -13,15 +13,19 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useDatabase } from '../src/hooks/useDatabase';
 import { useTheme } from '../src/hooks/useTheme';
+import { useSettings } from '../src/contexts/SettingsContext';
 import { addFoodItem } from '../src/database/foodItems';
+
 import { FoodCategory, StorageLocation } from '../src/types';
 import { CATEGORIES, STORAGE_LOCATIONS, UNITS } from '../src/constants/categories';
 import { getDefaultExpirationDate, getTodayString } from '../src/utils/dates';
+import { getCurrencySymbol } from '../src/utils/currency';
 
 export default function AddItemScreen() {
   const db = useDatabase();
   const router = useRouter();
   const { colors } = useTheme();
+  const { settings, rescheduleNotifications } = useSettings();
 
   const [name, setName] = useState('');
   const [category, setCategory] = useState<FoodCategory>('other');
@@ -55,10 +59,11 @@ export default function AddItemScreen() {
       storageLocation,
       disposition: 'active',
       price: price ? parseFloat(price) : null,
-      currency: 'MXN',
+      currency: settings.currency,
       notes: notes.trim(),
     });
 
+    await rescheduleNotifications();
     router.back();
   };
 
@@ -95,9 +100,9 @@ export default function AddItemScreen() {
               <Ionicons
                 name={c.icon as keyof typeof Ionicons.glyphMap}
                 size={14}
-                color={category === c.value ? '#FFFFFF' : colors.textSecondary}
+                color={category === c.value ? colors.primaryText : colors.textSecondary}
               />
-              <Text style={{ color: category === c.value ? '#FFFFFF' : colors.text, fontSize: 13 }}>
+              <Text style={{ color: category === c.value ? colors.primaryText : colors.text, fontSize: 13 }}>
                 {c.label}
               </Text>
             </TouchableOpacity>
@@ -140,7 +145,7 @@ export default function AddItemScreen() {
                 ]}
                 onPress={() => { setUnit(u); setShowUnitPicker(false); }}
               >
-                <Text style={{ color: unit === u ? '#FFFFFF' : colors.text, fontSize: 13 }}>{u}</Text>
+                <Text style={{ color: unit === u ? colors.primaryText : colors.text, fontSize: 13 }}>{u}</Text>
               </TouchableOpacity>
             ))}
           </View>
@@ -163,9 +168,9 @@ export default function AddItemScreen() {
               <Ionicons
                 name={s.icon as keyof typeof Ionicons.glyphMap}
                 size={14}
-                color={storageLocation === s.value ? '#FFFFFF' : colors.textSecondary}
+                color={storageLocation === s.value ? colors.primaryText : colors.textSecondary}
               />
-              <Text style={{ color: storageLocation === s.value ? '#FFFFFF' : colors.text, fontSize: 13 }}>
+              <Text style={{ color: storageLocation === s.value ? colors.primaryText : colors.text, fontSize: 13 }}>
                 {s.label}
               </Text>
             </TouchableOpacity>
@@ -196,14 +201,19 @@ export default function AddItemScreen() {
         </View>
 
         <Text style={[styles.label, { color: colors.text }]}>Precio (opcional)</Text>
-        <TextInput
-          style={[styles.input, { backgroundColor: colors.surface, color: colors.text, borderColor: colors.border }]}
-          value={price}
-          onChangeText={setPrice}
-          keyboardType="decimal-pad"
-          placeholder="0.00"
-          placeholderTextColor={colors.textSecondary}
-        />
+        <View style={styles.priceRow}>
+          <Text style={[styles.currencyLabel, { color: colors.textSecondary }]}>
+            {getCurrencySymbol(settings.currency)}
+          </Text>
+          <TextInput
+            style={[styles.input, styles.priceInput, { backgroundColor: colors.surface, color: colors.text, borderColor: colors.border }]}
+            value={price}
+            onChangeText={setPrice}
+            keyboardType="decimal-pad"
+            placeholder="0.00"
+            placeholderTextColor={colors.textSecondary}
+          />
+        </View>
 
         <Text style={[styles.label, { color: colors.text }]}>Notas</Text>
         <TextInput
@@ -220,8 +230,8 @@ export default function AddItemScreen() {
           style={[styles.saveBtn, { backgroundColor: colors.primary }]}
           onPress={handleSave}
         >
-          <Ionicons name="checkmark" size={20} color="#FFFFFF" />
-          <Text style={styles.saveBtnText}>Guardar</Text>
+          <Ionicons name="checkmark" size={20} color={colors.primaryText} />
+          <Text style={[styles.saveBtnText, { color: colors.primaryText }]}>Guardar</Text>
         </TouchableOpacity>
 
         <View style={{ height: 40 }} />
@@ -245,7 +255,7 @@ const styles = StyleSheet.create({
   },
   input: {
     borderWidth: 1,
-    borderRadius: 10,
+    borderRadius: 14,
     paddingHorizontal: 12,
     paddingVertical: 10,
     fontSize: 15,
@@ -272,8 +282,21 @@ const styles = StyleSheet.create({
     gap: 4,
     paddingHorizontal: 10,
     paddingVertical: 6,
-    borderRadius: 16,
+    borderRadius: 20,
     borderWidth: 1,
+  },
+  priceRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  currencyLabel: {
+    fontSize: 16,
+    fontWeight: '600',
+    minWidth: 24,
+  },
+  priceInput: {
+    flex: 1,
   },
   pickerBtn: {
     flexDirection: 'row',
@@ -287,10 +310,9 @@ const styles = StyleSheet.create({
     gap: 6,
     marginTop: 20,
     padding: 14,
-    borderRadius: 12,
+    borderRadius: 16,
   },
   saveBtnText: {
-    color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '600',
   },

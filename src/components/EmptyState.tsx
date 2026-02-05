@@ -14,7 +14,9 @@ export function EmptyState({ icon, title, message }: Props) {
 
   return (
     <View style={styles.container}>
-      <Ionicons name={icon} size={64} color={colors.textSecondary + '60'} />
+      <View style={[styles.iconBg, { backgroundColor: colors.primary + '20' }]}>
+        <Ionicons name={icon} size={48} color={colors.primary} />
+      </View>
       <Text style={[styles.title, { color: colors.text }]}>{title}</Text>
       <Text style={[styles.message, { color: colors.textSecondary }]}>{message}</Text>
     </View>
@@ -27,6 +29,13 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     padding: 32,
+  },
+  iconBg: {
+    width: 88,
+    height: 88,
+    borderRadius: 44,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   title: {
     fontSize: 18,

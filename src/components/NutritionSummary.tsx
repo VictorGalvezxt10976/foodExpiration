@@ -1,5 +1,6 @@
 import React from 'react';
-import { View, Text, StyleSheet, Platform } from 'react-native';
+import { View, StyleSheet, Platform } from 'react-native';
+import { Text } from './StyledText';
 import { GlassView, GlassContainer } from 'expo-glass-effect';
 import { useTheme } from '../hooks/useTheme';
 import { DailyNutrition } from '../types';

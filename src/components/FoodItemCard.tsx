@@ -1,5 +1,6 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, StyleSheet, TouchableOpacity } from 'react-native';
+import { Text } from './StyledText';
 import { Ionicons } from '@expo/vector-icons';
 import { FoodItem } from '../types';
 import { useTheme } from '../hooks/useTheme';

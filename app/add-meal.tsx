@@ -1,13 +1,13 @@
 import React, { useState } from 'react';
 import {
   View,
-  Text,
   StyleSheet,
   ScrollView,
   TextInput,
   TouchableOpacity,
   Alert,
 } from 'react-native';
+import { Text } from '../src/components/StyledText';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useDatabase } from '../src/hooks/useDatabase';

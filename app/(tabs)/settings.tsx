@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import {
   View,
-  Text,
   StyleSheet,
   ScrollView,
   TouchableOpacity,
@@ -10,6 +9,7 @@ import {
   Alert,
   Platform,
 } from 'react-native';
+import { Text } from '../../src/components/StyledText';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../src/hooks/useTheme';
@@ -49,7 +49,7 @@ export default function SettingsScreen() {
 
   return (
     <ScrollView style={[styles.container, { backgroundColor: colors.background, paddingTop: insets.top }]}>
-      <Text style={[styles.sectionTitle, { color: colors.text }]}>Notificaciones</Text>
+      <Text style={[styles.sectionTitle, { color: colors.text, marginTop: 16 }]}>Notificaciones</Text>
 
       <View style={[styles.card, { backgroundColor: colors.card }, colors.shadow]}>
         <Text style={[styles.cardLabel, { color: colors.text }]}>Notificar antes del vencimiento</Text>

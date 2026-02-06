@@ -1,5 +1,6 @@
 import React, { useRef, useEffect } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, Platform } from 'react-native';
+import { View, StyleSheet, FlatList, TouchableOpacity, Platform } from 'react-native';
+import { Text } from './StyledText';
 import { GlassView } from 'expo-glass-effect';
 import { format, addDays, isSameDay } from 'date-fns';
 import { es } from 'date-fns/locale';

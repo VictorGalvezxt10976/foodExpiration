@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Platform } from 'react-native';
 import { GlassView } from 'expo-glass-effect';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../hooks/useTheme';
@@ -12,7 +12,14 @@ interface Props {
 }
 
 export function MealTypeFilter({ selected, onSelect }: Props) {
-  const { colors } = useTheme();
+  const { colors, isDark } = useTheme();
+
+  const androidChipStyle = {
+    backgroundColor: isDark ? 'rgba(50, 50, 50, 0.92)' : 'rgba(255, 255, 255, 0.95)',
+    borderWidth: 1,
+    borderColor: isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.06)',
+    elevation: 2,
+  };
 
   return (
     <ScrollView
@@ -49,6 +56,19 @@ export function MealTypeFilter({ selected, onSelect }: Props) {
                 styles.chip,
                 { backgroundColor: colors.primary, borderColor: colors.primary },
               ]}
+              onPress={() => onSelect(type.value)}
+              activeOpacity={0.7}
+            >
+              {content}
+            </TouchableOpacity>
+          );
+        }
+
+        if (Platform.OS === 'android') {
+          return (
+            <TouchableOpacity
+              key={type.value}
+              style={[styles.chip, androidChipStyle]}
               onPress={() => onSelect(type.value)}
               activeOpacity={0.7}
             >

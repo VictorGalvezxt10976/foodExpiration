@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { Host, DateTimePicker } from '@expo/ui/swift-ui';
 import { useDatabase } from '../src/hooks/useDatabase';
 import { useTheme } from '../src/hooks/useTheme';
 import { useSettings } from '../src/contexts/SettingsContext';
@@ -17,6 +18,7 @@ import { getFoodItemById, updateFoodItem, deleteFoodItem } from '../src/database
 import { FoodCategory, StorageLocation } from '../src/types';
 import { CATEGORIES, STORAGE_LOCATIONS, UNITS } from '../src/constants/categories';
 import { getCurrencySymbol } from '../src/utils/currency';
+import { dateToDateString } from '../src/utils/dates';
 
 export default function EditItemScreen() {
   const db = useDatabase();
@@ -112,7 +114,7 @@ export default function EditItemScreen() {
       style={[styles.container, { backgroundColor: colors.background }]}
       keyboardShouldPersistTaps="handled"
     >
-      <View style={styles.form}>
+      <View key={loading ? 'loading' : id} style={styles.form}>
         <Text style={[styles.label, { color: colors.text }]}>Nombre *</Text>
         <TextInput
           style={[styles.input, { backgroundColor: colors.surface, color: colors.text, borderColor: colors.border }]}
@@ -219,23 +221,25 @@ export default function EditItemScreen() {
         <View style={styles.row}>
           <View style={styles.halfField}>
             <Text style={[styles.label, { color: colors.text }]}>Fecha de compra</Text>
-            <TextInput
-              style={[styles.input, { backgroundColor: colors.surface, color: colors.text, borderColor: colors.border }]}
-              value={purchaseDate}
-              onChangeText={setPurchaseDate}
-              placeholder="YYYY-MM-DD"
-              placeholderTextColor={colors.textSecondary}
-            />
+            <Host matchContents>
+              <DateTimePicker
+                variant="compact"
+                displayedComponents="date"
+                initialDate={purchaseDate}
+                onDateSelected={(date) => setPurchaseDate(dateToDateString(date))}
+              />
+            </Host>
           </View>
           <View style={styles.halfField}>
             <Text style={[styles.label, { color: colors.text }]}>Fecha de vencimiento *</Text>
-            <TextInput
-              style={[styles.input, { backgroundColor: colors.surface, color: colors.text, borderColor: colors.border }]}
-              value={expirationDate}
-              onChangeText={setExpirationDate}
-              placeholder="YYYY-MM-DD"
-              placeholderTextColor={colors.textSecondary}
-            />
+            <Host matchContents>
+              <DateTimePicker
+                variant="compact"
+                displayedComponents="date"
+                initialDate={expirationDate}
+                onDateSelected={(date) => setExpirationDate(dateToDateString(date))}
+              />
+            </Host>
           </View>
         </View>
 

@@ -20,9 +20,9 @@ export function GlassCard({
   onPress,
   activeOpacity = 0.7,
 }: Props) {
-  const { colors } = useTheme();
+  const { colors, isDark } = useTheme();
 
-  const fallbackStyle: ViewStyle = {
+  const glassStyle: ViewStyle = {
     backgroundColor: intensity === 'standard' ? colors.glass.card : colors.glass.surface,
     borderWidth: 1,
     borderColor: colors.glass.border,
@@ -31,6 +31,38 @@ export function GlassCard({
     ...colors.glassShadow,
   };
 
+  // Android fallback: simulated glass effect
+  const androidGlassStyle: ViewStyle = {
+    backgroundColor: isDark
+      ? intensity === 'standard' ? 'rgba(50, 50, 50, 0.92)' : 'rgba(45, 45, 45, 0.88)'
+      : intensity === 'standard' ? 'rgba(255, 255, 255, 0.95)' : 'rgba(255, 255, 255, 0.90)',
+    borderWidth: 1,
+    borderColor: isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.06)',
+    borderRadius,
+    overflow: 'hidden',
+    elevation: intensity === 'standard' ? 4 : 2,
+  };
+
+  if (Platform.OS === 'android') {
+    if (onPress) {
+      return (
+        <TouchableOpacity
+          style={[androidGlassStyle, style]}
+          onPress={onPress}
+          activeOpacity={activeOpacity}
+        >
+          {children}
+        </TouchableOpacity>
+      );
+    }
+    return (
+      <View style={[androidGlassStyle, style]}>
+        {children}
+      </View>
+    );
+  }
+
+  // iOS: use native GlassView
   if (onPress) {
     return (
       <TouchableOpacity
@@ -39,7 +71,7 @@ export function GlassCard({
         activeOpacity={activeOpacity}
       >
         <GlassView
-          style={[fallbackStyle, { borderRadius }]}
+          style={[glassStyle, { borderRadius }]}
           tintColor={intensity === 'standard' ? colors.glass.card : colors.glass.surface}
         >
           {children}
@@ -50,7 +82,7 @@ export function GlassCard({
 
   return (
     <GlassView
-      style={[fallbackStyle, style, { borderRadius }]}
+      style={[glassStyle, style, { borderRadius }]}
       tintColor={intensity === 'standard' ? colors.glass.card : colors.glass.surface}
     >
       {children}

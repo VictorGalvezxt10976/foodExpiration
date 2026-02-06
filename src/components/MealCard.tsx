@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Platform } from 'react-native';
 import { GlassView } from 'expo-glass-effect';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../hooks/useTheme';
@@ -18,7 +18,73 @@ const MACRO_COLORS = {
 };
 
 export function MealCard({ meal, onPress, onDelete }: Props) {
-  const { colors } = useTheme();
+  const { colors, isDark } = useTheme();
+
+  const androidCardStyle = {
+    backgroundColor: isDark ? 'rgba(50, 50, 50, 0.92)' : 'rgba(255, 255, 255, 0.95)',
+    borderWidth: 1,
+    borderColor: isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.06)',
+    elevation: 4,
+  };
+
+  const cardContent = (
+    <>
+      <View style={styles.topRow}>
+        <View style={[styles.emojiCircle, { backgroundColor: colors.surface }]}>
+          <Text style={styles.emoji}>{meal.emoji}</Text>
+        </View>
+        <View style={styles.titleBlock}>
+          <Text style={[styles.name, { color: colors.text }]} numberOfLines={1}>
+            {meal.name}
+          </Text>
+          <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
+            {meal.calories} kcal{meal.servingSize ? ` · ${meal.servingSize}` : ''}
+          </Text>
+        </View>
+        {onDelete && (
+          <TouchableOpacity
+            style={styles.menuBtn}
+            onPress={() => onDelete(meal)}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          >
+            <Ionicons name="trash-outline" size={18} color={colors.textSecondary} />
+          </TouchableOpacity>
+        )}
+      </View>
+
+      <View style={styles.macrosRow}>
+        <View style={styles.macroItem}>
+          <View style={[styles.macroDot, { backgroundColor: MACRO_COLORS.protein }]} />
+          <Text style={[styles.macroValue, { color: colors.text }]}>{meal.protein}g</Text>
+          <Text style={[styles.macroLabel, { color: colors.textSecondary }]}>Proteina</Text>
+        </View>
+        <View style={styles.macroItem}>
+          <View style={[styles.macroDot, { backgroundColor: MACRO_COLORS.fats }]} />
+          <Text style={[styles.macroValue, { color: colors.text }]}>{meal.fats}g</Text>
+          <Text style={[styles.macroLabel, { color: colors.textSecondary }]}>Grasas</Text>
+        </View>
+        <View style={styles.macroItem}>
+          <View style={[styles.macroDot, { backgroundColor: MACRO_COLORS.carbs }]} />
+          <Text style={[styles.macroValue, { color: colors.text }]}>{meal.carbs}g</Text>
+          <Text style={[styles.macroLabel, { color: colors.textSecondary }]}>Carbos</Text>
+        </View>
+      </View>
+    </>
+  );
+
+  if (Platform.OS === 'android') {
+    return (
+      <TouchableOpacity
+        style={styles.cardOuter}
+        onPress={() => onPress?.(meal)}
+        activeOpacity={0.7}
+      >
+        <View style={[styles.card, androidCardStyle]}>
+          {cardContent}
+        </View>
+      </TouchableOpacity>
+    );
+  }
 
   return (
     <TouchableOpacity
@@ -27,46 +93,7 @@ export function MealCard({ meal, onPress, onDelete }: Props) {
       activeOpacity={0.7}
     >
       <GlassView style={styles.card}>
-        <View style={styles.topRow}>
-          <View style={[styles.emojiCircle, { backgroundColor: colors.surface }]}>
-            <Text style={styles.emoji}>{meal.emoji}</Text>
-          </View>
-          <View style={styles.titleBlock}>
-            <Text style={[styles.name, { color: colors.text }]} numberOfLines={1}>
-              {meal.name}
-            </Text>
-            <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
-              {meal.calories} kcal{meal.servingSize ? ` · ${meal.servingSize}` : ''}
-            </Text>
-          </View>
-          {onDelete && (
-            <TouchableOpacity
-              style={styles.menuBtn}
-              onPress={() => onDelete(meal)}
-              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-            >
-              <Ionicons name="trash-outline" size={18} color={colors.textSecondary} />
-            </TouchableOpacity>
-          )}
-        </View>
-
-        <View style={styles.macrosRow}>
-          <View style={styles.macroItem}>
-            <View style={[styles.macroDot, { backgroundColor: MACRO_COLORS.protein }]} />
-            <Text style={[styles.macroValue, { color: colors.text }]}>{meal.protein}g</Text>
-            <Text style={[styles.macroLabel, { color: colors.textSecondary }]}>Proteina</Text>
-          </View>
-          <View style={styles.macroItem}>
-            <View style={[styles.macroDot, { backgroundColor: MACRO_COLORS.fats }]} />
-            <Text style={[styles.macroValue, { color: colors.text }]}>{meal.fats}g</Text>
-            <Text style={[styles.macroLabel, { color: colors.textSecondary }]}>Grasas</Text>
-          </View>
-          <View style={styles.macroItem}>
-            <View style={[styles.macroDot, { backgroundColor: MACRO_COLORS.carbs }]} />
-            <Text style={[styles.macroValue, { color: colors.text }]}>{meal.carbs}g</Text>
-            <Text style={[styles.macroLabel, { color: colors.textSecondary }]}>Carbos</Text>
-          </View>
-        </View>
+        {cardContent}
       </GlassView>
     </TouchableOpacity>
   );

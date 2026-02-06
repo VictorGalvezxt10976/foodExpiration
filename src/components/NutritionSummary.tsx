@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet, Platform } from 'react-native';
 import { GlassView, GlassContainer } from 'expo-glass-effect';
 import { useTheme } from '../hooks/useTheme';
 import { DailyNutrition } from '../types';
@@ -16,7 +16,7 @@ const STAT_COLORS = {
 };
 
 export function NutritionSummary({ nutrition }: Props) {
-  const { colors } = useTheme();
+  const { colors, isDark } = useTheme();
 
   const stats = [
     { label: 'Calorias', value: `${Math.round(nutrition.totalCalories)}`, unit: 'kcal', color: STAT_COLORS.calories },
@@ -25,16 +25,41 @@ export function NutritionSummary({ nutrition }: Props) {
     { label: 'Carbos', value: `${Math.round(nutrition.totalCarbs)}`, unit: 'g', color: STAT_COLORS.carbs },
   ];
 
+  const androidCardStyle = {
+    backgroundColor: isDark ? 'rgba(50, 50, 50, 0.92)' : 'rgba(255, 255, 255, 0.95)',
+    borderWidth: 1,
+    borderColor: isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.06)',
+    elevation: 3,
+  };
+
+  const StatCard = ({ stat }: { stat: typeof stats[0] }) => (
+    <>
+      <View style={[styles.statDot, { backgroundColor: stat.color }]} />
+      <Text style={[styles.statValue, { color: colors.text }]}>
+        {stat.value}
+        <Text style={[styles.statUnit, { color: colors.textSecondary }]}> {stat.unit}</Text>
+      </Text>
+      <Text style={[styles.statLabel, { color: colors.textSecondary }]}>{stat.label}</Text>
+    </>
+  );
+
+  if (Platform.OS === 'android') {
+    return (
+      <View style={styles.container}>
+        {stats.map(stat => (
+          <View key={stat.label} style={[styles.statCard, androidCardStyle]}>
+            <StatCard stat={stat} />
+          </View>
+        ))}
+      </View>
+    );
+  }
+
   return (
     <GlassContainer spacing={8} style={styles.container}>
       {stats.map(stat => (
         <GlassView key={stat.label} style={styles.statCard}>
-          <View style={[styles.statDot, { backgroundColor: stat.color }]} />
-          <Text style={[styles.statValue, { color: colors.text }]}>
-            {stat.value}
-            <Text style={[styles.statUnit, { color: colors.textSecondary }]}> {stat.unit}</Text>
-          </Text>
-          <Text style={[styles.statLabel, { color: colors.textSecondary }]}>{stat.label}</Text>
+          <StatCard stat={stat} />
         </GlassView>
       ))}
     </GlassContainer>
@@ -47,6 +72,7 @@ const styles = StyleSheet.create({
     marginVertical: 4,
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 8,
   },
   statCard: {
     flex: 1,

@@ -8,10 +8,13 @@ import {
   TouchableOpacity,
   RefreshControl,
   Platform,
+  Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import * as ImagePicker from 'expo-image-picker';
 import { useDatabase } from '../../src/hooks/useDatabase';
 import { useTheme } from '../../src/hooks/useTheme';
 import { useSettings } from '../../src/contexts/SettingsContext';
@@ -21,6 +24,7 @@ import { FoodItemCard } from '../../src/components/FoodItemCard';
 import { EmptyState } from '../../src/components/EmptyState';
 import { CATEGORIES } from '../../src/constants/categories';
 import { Host, Picker } from '@expo/ui/swift-ui';
+import { scanProductLabel } from '../../src/services/labelScanner';
 
 type FilterStatus = 'all' | 'fresh' | 'expiring' | 'expired';
 
@@ -28,7 +32,7 @@ export default function InventoryScreen() {
   const db = useDatabase();
   const router = useRouter();
   const { colors } = useTheme();
-  const { rescheduleNotifications } = useSettings();
+  const { settings, rescheduleNotifications } = useSettings();
   const insets = useSafeAreaInsets();
 
   const [items, setItems] = useState<FoodItem[]>([]);
@@ -36,6 +40,7 @@ export default function InventoryScreen() {
   const [selectedCategory, setSelectedCategory] = useState<FoodCategory | null>(null);
   const [selectedStatus, setSelectedStatus] = useState<FilterStatus>('all');
   const [refreshing, setRefreshing] = useState(false);
+  const [scanning, setScanning] = useState(false);
 
   const loadData = useCallback(async () => {
     const result = await getFoodItems(db, {
@@ -56,6 +61,42 @@ export default function InventoryScreen() {
     setRefreshing(true);
     await loadData();
     setRefreshing(false);
+  };
+
+  const handleScanLabel = async () => {
+    if (!settings.openaiApiKey) {
+      Alert.alert(
+        'API Key requerida',
+        'Para escanear etiquetas necesitas configurar tu API key de OpenAI. Ve a Ajustes para agregarla.',
+      );
+      return;
+    }
+
+    const { status } = await ImagePicker.requestCameraPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('Permiso denegado', 'Se necesita acceso a la camara para escanear etiquetas.');
+      return;
+    }
+
+    const result = await ImagePicker.launchCameraAsync({
+      base64: true,
+      quality: 0.8,
+    });
+
+    if (result.canceled || !result.assets?.[0]?.base64) return;
+
+    setScanning(true);
+    try {
+      const data = await scanProductLabel(settings.openaiApiKey, result.assets[0].base64);
+      router.push({
+        pathname: '/add-item',
+        params: { scannedData: JSON.stringify(data) },
+      });
+    } catch (error) {
+      Alert.alert('Error al escanear', error instanceof Error ? error.message : 'Error desconocido.');
+    } finally {
+      setScanning(false);
+    }
   };
 
   const handleMarkConsumed = async (item: FoodItem) => {
@@ -210,6 +251,19 @@ export default function InventoryScreen() {
         }
         contentContainerStyle={items.length === 0 ? styles.emptyList : styles.list}
       />
+
+      <TouchableOpacity
+        style={[styles.fab, { backgroundColor: colors.primary, bottom: Platform.OS === 'android' ? 140 : insets.bottom + 70 }]}
+        onPress={handleScanLabel}
+        disabled={scanning}
+        activeOpacity={0.8}
+      >
+        {scanning ? (
+          <ActivityIndicator size="small" color={colors.primaryText} />
+        ) : (
+          <Ionicons name="camera" size={26} color={colors.primaryText} />
+        )}
+      </TouchableOpacity>
     </View>
   );
 }
@@ -276,5 +330,19 @@ const styles = StyleSheet.create({
   },
   emptyList: {
     flexGrow: 1,
+  },
+  fab: {
+    position: 'absolute',
+    right: 20,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
+    elevation: 8,
   },
 });

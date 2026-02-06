@@ -8,6 +8,7 @@ import {
   RefreshControl,
   Alert,
   Image,
+  Platform,
 } from 'react-native';
 import { GlassView, GlassContainer } from 'expo-glass-effect';
 import { useFocusEffect, useRouter } from 'expo-router';
@@ -98,6 +99,122 @@ export default function HomeScreen() {
   const alertItems = [...expiringItems];
   const totalAlerts = expiredCount + expiringItems.length;
 
+  // Android glass fallback styles
+  const androidGlassCard = {
+    backgroundColor: isDark ? 'rgba(50, 50, 50, 0.92)' : 'rgba(255, 255, 255, 0.95)',
+    borderWidth: 1,
+    borderColor: isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.06)',
+    elevation: 3,
+  };
+
+  const androidGlassBtn = {
+    backgroundColor: isDark ? 'rgba(50, 50, 50, 0.92)' : 'rgba(255, 255, 255, 0.95)',
+    borderWidth: 1,
+    borderColor: isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.06)',
+    elevation: 2,
+  };
+
+  const NutritionCards = () => {
+    const cards = [
+      { color: '#F47551', value: Math.round(nutrition.totalCalories), unit: 'kcal', label: 'Calorias' },
+      { color: '#CCB1F6', value: Math.round(nutrition.totalProtein), unit: 'g', label: 'Proteina' },
+      { color: '#F8D558', value: Math.round(nutrition.totalFats), unit: 'g', label: 'Grasas' },
+      { color: '#CDE26D', value: Math.round(nutrition.totalCarbs), unit: 'g', label: 'Carbos' },
+    ];
+
+    const CardContent = ({ card }: { card: typeof cards[0] }) => (
+      <>
+        <View style={[styles.nutritionDot, { backgroundColor: card.color }]} />
+        <Text style={[styles.nutritionValue, { color: colors.text }]}>
+          {card.value}
+          <Text style={[styles.nutritionUnit, { color: colors.textSecondary }]}> {card.unit}</Text>
+        </Text>
+        <Text style={[styles.nutritionLabel, { color: colors.textSecondary }]}>{card.label}</Text>
+      </>
+    );
+
+    if (Platform.OS === 'android') {
+      return (
+        <View style={styles.nutritionContainer}>
+          {cards.map(card => (
+            <View key={card.label} style={[styles.nutritionCard, androidGlassCard]}>
+              <CardContent card={card} />
+            </View>
+          ))}
+        </View>
+      );
+    }
+
+    return (
+      <GlassContainer spacing={8} style={styles.nutritionContainer}>
+        {cards.map(card => (
+          <GlassView key={card.label} style={styles.nutritionCard}>
+            <CardContent card={card} />
+          </GlassView>
+        ))}
+      </GlassContainer>
+    );
+  };
+
+  const HeaderButton = () => {
+    if (Platform.OS === 'android') {
+      return (
+        <View style={[styles.headerBtn, androidGlassBtn]}>
+          <Ionicons name="sparkles" size={20} color={colors.accent} />
+        </View>
+      );
+    }
+    return (
+      <GlassView style={styles.headerBtn}>
+        <Ionicons name="sparkles" size={20} color={colors.accent} />
+      </GlassView>
+    );
+  };
+
+  const AlertBanner = () => {
+    const content = (
+      <>
+        <View style={[styles.alertIconBg, { backgroundColor: colors.statusExpired + '25' }]}>
+          <Ionicons name="alert-circle" size={18} color={colors.statusExpired} />
+        </View>
+        <Text style={[styles.alertText, { color: colors.text }]}>
+          {expiredCount > 0 && `${expiredCount} vencido${expiredCount !== 1 ? 's' : ''}`}
+          {expiredCount > 0 && expiringItems.length > 0 && ' · '}
+          {expiringItems.length > 0 && `${expiringItems.length} por vencer`}
+        </Text>
+        <TouchableOpacity onPress={() => router.push('/(tabs)/inventory')}>
+          <Text style={[styles.alertLink, { color: colors.primary }]}>Ver</Text>
+        </TouchableOpacity>
+      </>
+    );
+
+    if (Platform.OS === 'android') {
+      return <View style={[styles.alertBanner, androidGlassCard]}>{content}</View>;
+    }
+    return <GlassView style={styles.alertBanner}>{content}</GlassView>;
+  };
+
+  const AlertItem = ({ item }: { item: FoodItem }) => {
+    const content = (
+      <>
+        <View style={[styles.alertDot, {
+          backgroundColor: item.status === 'expired' ? colors.statusExpired : colors.statusExpiring,
+        }]} />
+        <Text style={[styles.alertItemName, { color: colors.text }]} numberOfLines={1}>
+          {item.name}
+        </Text>
+        <Text style={[styles.alertItemLabel, { color: colors.textSecondary }]}>
+          {getExpirationLabel(item.expirationDate)}
+        </Text>
+      </>
+    );
+
+    if (Platform.OS === 'android') {
+      return <View style={[styles.alertItem, androidGlassCard]}>{content}</View>;
+    }
+    return <GlassView style={styles.alertItem}>{content}</GlassView>;
+  };
+
   return (
     <View style={styles.container}>
       <Image
@@ -109,69 +226,13 @@ export default function HomeScreen() {
         style={[styles.container, { paddingTop: insets.top }]}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}
       >
-        <Host style={{ flex: 1, justifyContent: 'center', paddingTop: 400 }}>
-          <VStack spacing={16}>
-
-            {/* Liquid Glass translúcido - deja ver el fondo */}
-            <Button
-              variant="glass"
-              onPress={() => Alert.alert('Glass!')}>
-              Botón Glass
-            </Button>
-
-            {/* Liquid Glass prominente - opaco pero con efecto glass */}
-            <Button
-              variant="glassProminent"
-              onPress={() => Alert.alert('Glass Prominent!')}>
-              Botón Glass Prominent
-            </Button>
-
-            {/* Glass con tint de color y ícono */}
-            <Button
-              variant="glass"
-              color="purple"
-              systemImage="star.fill"
-              onPress={() => Alert.alert('Favorito!')}>
-              Favorito
-            </Button>
-
-            {/* Glass Prominent con color - para acción primaria */}
-            <Button
-              variant="glassProminent"
-              color="orange"
-              systemImage="questionmark.circle"
-              onPress={() => Alert.alert('Ayuda!')}>
-              Help & support
-            </Button>
-
-            {/* Grupo de botones glass juntos */}
-            <HStack spacing={12}>
-              <Button
-                variant="glass"
-                systemImage="heart.fill"
-                color="red"
-                onPress={() => { }}>
-                Like
-              </Button>
-              <Button
-                variant="glass"
-                systemImage="square.and.arrow.up"
-                onPress={() => { }}>
-                Share
-              </Button>
-            </HStack>
-
-          </VStack>
-        </Host>
-        {/* <View style={styles.header}>
+        <View style={styles.header}>
           <Text style={[styles.title, { color: colors.text }]}>FreshKeep</Text>
           <View style={styles.headerActions}>
             <TouchableOpacity
               onPress={() => router.push('/ai-recipes')}
             >
-              <GlassView style={styles.headerBtn}>
-                <Ionicons name="sparkles" size={20} color={colors.accent} />
-              </GlassView>
+              <HeaderButton />
             </TouchableOpacity>
             <TouchableOpacity
               style={[styles.addButton, { backgroundColor: colors.primary }, colors.shadow]}
@@ -186,43 +247,10 @@ export default function HomeScreen() {
 
         <View style={{ height: 12 }} />
 
-        <GlassContainer spacing={8} style={styles.nutritionContainer}>
-          <GlassView style={styles.nutritionCard}>
-            <View style={[styles.nutritionDot, { backgroundColor: '#F47551' }]} />
-            <Text style={[styles.nutritionValue, { color: colors.text }]}>
-              {Math.round(nutrition.totalCalories)}
-              <Text style={[styles.nutritionUnit, { color: colors.textSecondary }]}> kcal</Text>
-            </Text>
-            <Text style={[styles.nutritionLabel, { color: colors.textSecondary }]}>Calorias</Text>
-          </GlassView>
-          <GlassView style={styles.nutritionCard}>
-            <View style={[styles.nutritionDot, { backgroundColor: '#CCB1F6' }]} />
-            <Text style={[styles.nutritionValue, { color: colors.text }]}>
-              {Math.round(nutrition.totalProtein)}
-              <Text style={[styles.nutritionUnit, { color: colors.textSecondary }]}> g</Text>
-            </Text>
-            <Text style={[styles.nutritionLabel, { color: colors.textSecondary }]}>Proteina</Text>
-          </GlassView>
-          <GlassView style={styles.nutritionCard}>
-            <View style={[styles.nutritionDot, { backgroundColor: '#F8D558' }]} />
-            <Text style={[styles.nutritionValue, { color: colors.text }]}>
-              {Math.round(nutrition.totalFats)}
-              <Text style={[styles.nutritionUnit, { color: colors.textSecondary }]}> g</Text>
-            </Text>
-            <Text style={[styles.nutritionLabel, { color: colors.textSecondary }]}>Grasas</Text>
-          </GlassView>
-          <GlassView style={styles.nutritionCard}>
-            <View style={[styles.nutritionDot, { backgroundColor: '#CDE26D' }]} />
-            <Text style={[styles.nutritionValue, { color: colors.text }]}>
-              {Math.round(nutrition.totalCarbs)}
-              <Text style={[styles.nutritionUnit, { color: colors.textSecondary }]}> g</Text>
-            </Text>
-            <Text style={[styles.nutritionLabel, { color: colors.textSecondary }]}>Carbos</Text>
-          </GlassView>
-        </GlassContainer>
+        <NutritionCards />
 
         <View style={{ height: 12 }} />
-      
+
         <MealTypeFilter selected={mealFilter} onSelect={setMealFilter} />
 
         <View style={{ height: 8 }} />
@@ -245,37 +273,14 @@ export default function HomeScreen() {
 
         {totalAlerts > 0 && (
           <View style={styles.alertSection}>
-            <GlassView style={styles.alertBanner}>
-              <View style={[styles.alertIconBg, { backgroundColor: colors.statusExpired + '25' }]}>
-                <Ionicons name="alert-circle" size={18} color={colors.statusExpired} />
-              </View>
-              <Text style={[styles.alertText, { color: colors.text }]}>
-                {expiredCount > 0 && `${expiredCount} vencido${expiredCount !== 1 ? 's' : ''}`}
-                {expiredCount > 0 && expiringItems.length > 0 && ' · '}
-                {expiringItems.length > 0 && `${expiringItems.length} por vencer`}
-              </Text>
-              <TouchableOpacity onPress={() => router.push('/(tabs)/inventory')}>
-                <Text style={[styles.alertLink, { color: colors.primary }]}>Ver</Text>
-              </TouchableOpacity>
-            </GlassView>
-
+            <AlertBanner />
             {alertItems.map(item => (
-              <GlassView key={item.id} style={styles.alertItem}>
-                <View style={[styles.alertDot, {
-                  backgroundColor: item.status === 'expired' ? colors.statusExpired : colors.statusExpiring,
-                }]} />
-                <Text style={[styles.alertItemName, { color: colors.text }]} numberOfLines={1}>
-                  {item.name}
-                </Text>
-                <Text style={[styles.alertItemLabel, { color: colors.textSecondary }]}>
-                  {getExpirationLabel(item.expirationDate)}
-                </Text>
-              </GlassView>
+              <AlertItem key={item.id} item={item} />
             ))}
           </View>
         )}
 
-        <View style={{ height: 32 }} /> */}
+        <View style={{ height: 32 }} />
       </ScrollView>
     </View>
   );
@@ -326,6 +331,7 @@ const styles = StyleSheet.create({
     marginVertical: 4,
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 8,
   },
   nutritionCard: {
     flex: 1,

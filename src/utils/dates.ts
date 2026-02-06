@@ -38,3 +38,10 @@ export function getDefaultExpirationDate(): string {
 export function getTodayString(): string {
   return new Date().toISOString().split('T')[0];
 }
+
+export function dateToDateString(date: Date): string {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}

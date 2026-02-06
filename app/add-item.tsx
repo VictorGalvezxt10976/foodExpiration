@@ -7,10 +7,12 @@ import {
   TextInput,
   TouchableOpacity,
   Alert,
-  Platform,
+  ActivityIndicator,
 } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import * as ImagePicker from 'expo-image-picker';
+import { Host, DateTimePicker } from '@expo/ui/swift-ui';
 import { useDatabase } from '../src/hooks/useDatabase';
 import { useTheme } from '../src/hooks/useTheme';
 import { useSettings } from '../src/contexts/SettingsContext';
@@ -18,25 +20,98 @@ import { addFoodItem } from '../src/database/foodItems';
 
 import { FoodCategory, StorageLocation } from '../src/types';
 import { CATEGORIES, STORAGE_LOCATIONS, UNITS } from '../src/constants/categories';
-import { getDefaultExpirationDate, getTodayString } from '../src/utils/dates';
+import { getDefaultExpirationDate, getTodayString, dateToDateString } from '../src/utils/dates';
 import { getCurrencySymbol } from '../src/utils/currency';
+import { scanProductLabel, ScannedProductData } from '../src/services/labelScanner';
 
 export default function AddItemScreen() {
   const db = useDatabase();
   const router = useRouter();
   const { colors } = useTheme();
   const { settings, rescheduleNotifications } = useSettings();
+  const { scannedData } = useLocalSearchParams<{ scannedData?: string }>();
 
-  const [name, setName] = useState('');
-  const [category, setCategory] = useState<FoodCategory>('other');
-  const [quantity, setQuantity] = useState('1');
-  const [unit, setUnit] = useState('pzas');
+  const getInitialValues = () => {
+    if (scannedData) {
+      try {
+        const data: ScannedProductData = JSON.parse(scannedData);
+        return {
+          name: data.name ?? '',
+          category: data.category ?? 'other' as FoodCategory,
+          quantity: data.quantity != null ? String(data.quantity) : '1',
+          unit: data.unit ?? 'pzas',
+          expirationDate: data.expirationDate ?? getDefaultExpirationDate(),
+          storageLocation: data.storageLocation ?? 'fridge' as StorageLocation,
+          price: data.price != null ? String(data.price) : '',
+        };
+      } catch {
+        // ignore parse errors
+      }
+    }
+    return {
+      name: '',
+      category: 'other' as FoodCategory,
+      quantity: '1',
+      unit: 'pzas',
+      expirationDate: getDefaultExpirationDate(),
+      storageLocation: 'fridge' as StorageLocation,
+      price: '',
+    };
+  };
+
+  const initial = getInitialValues();
+
+  const [name, setName] = useState(initial.name);
+  const [category, setCategory] = useState<FoodCategory>(initial.category);
+  const [quantity, setQuantity] = useState(initial.quantity);
+  const [unit, setUnit] = useState(initial.unit);
   const [purchaseDate, setPurchaseDate] = useState(getTodayString());
-  const [expirationDate, setExpirationDate] = useState(getDefaultExpirationDate());
-  const [storageLocation, setStorageLocation] = useState<StorageLocation>('fridge');
-  const [price, setPrice] = useState('');
+  const [expirationDate, setExpirationDate] = useState(initial.expirationDate);
+  const [storageLocation, setStorageLocation] = useState<StorageLocation>(initial.storageLocation);
+  const [price, setPrice] = useState(initial.price);
   const [notes, setNotes] = useState('');
   const [showUnitPicker, setShowUnitPicker] = useState(false);
+  const [scanning, setScanning] = useState(false);
+
+  const handleScanLabel = async () => {
+    if (!settings.openaiApiKey) {
+      Alert.alert(
+        'API Key requerida',
+        'Para escanear etiquetas necesitas configurar tu API key de OpenAI. Ve a Ajustes para agregarla.',
+      );
+      return;
+    }
+
+    const { status } = await ImagePicker.requestCameraPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('Permiso denegado', 'Se necesita acceso a la camara para escanear etiquetas.');
+      return;
+    }
+
+    const result = await ImagePicker.launchCameraAsync({
+      base64: true,
+      quality: 0.8,
+    });
+
+    if (result.canceled || !result.assets?.[0]?.base64) return;
+
+    setScanning(true);
+    try {
+      const data = await scanProductLabel(settings.openaiApiKey, result.assets[0].base64);
+
+      if (data.name) setName(data.name);
+      if (data.category) setCategory(data.category);
+      if (data.quantity != null) setQuantity(String(data.quantity));
+      if (data.unit) setUnit(data.unit);
+      if (data.expirationDate) setExpirationDate(data.expirationDate);
+      if (data.storageLocation) setStorageLocation(data.storageLocation);
+      if (data.price != null) setPrice(String(data.price));
+    } catch (error) {
+      Alert.alert('Error al escanear', error instanceof Error ? error.message : 'Error desconocido.');
+    } finally {
+      setScanning(false);
+    }
+  };
 
   const handleSave = async () => {
     if (!name.trim()) {
@@ -72,8 +147,24 @@ export default function AddItemScreen() {
       style={[styles.container, { backgroundColor: colors.background }]}
       keyboardShouldPersistTaps="handled"
     >
-      <View style={styles.form}>
+      <View key={scannedData ?? 'new'} style={styles.form}>
         <Text style={[styles.label, { color: colors.text }]}>Nombre *</Text>
+
+        <TouchableOpacity
+          style={[styles.scanBtn, { backgroundColor: colors.surface, borderColor: colors.border }]}
+          onPress={handleScanLabel}
+          disabled={scanning}
+        >
+          {scanning ? (
+            <ActivityIndicator size="small" color={colors.primary} />
+          ) : (
+            <Ionicons name="camera-outline" size={20} color={colors.primary} />
+          )}
+          <Text style={[styles.scanBtnText, { color: colors.primary }]}>
+            {scanning ? 'Analizando etiqueta...' : 'Escanear etiqueta'}
+          </Text>
+        </TouchableOpacity>
+
         <TextInput
           style={[styles.input, { backgroundColor: colors.surface, color: colors.text, borderColor: colors.border }]}
           value={name}
@@ -180,23 +271,25 @@ export default function AddItemScreen() {
         <View style={styles.row}>
           <View style={styles.halfField}>
             <Text style={[styles.label, { color: colors.text }]}>Fecha de compra</Text>
-            <TextInput
-              style={[styles.input, { backgroundColor: colors.surface, color: colors.text, borderColor: colors.border }]}
-              value={purchaseDate}
-              onChangeText={setPurchaseDate}
-              placeholder="YYYY-MM-DD"
-              placeholderTextColor={colors.textSecondary}
-            />
+            <Host matchContents>
+              <DateTimePicker
+                variant="compact"
+                displayedComponents="date"
+                initialDate={purchaseDate}
+                onDateSelected={(date) => setPurchaseDate(dateToDateString(date))}
+              />
+            </Host>
           </View>
           <View style={styles.halfField}>
             <Text style={[styles.label, { color: colors.text }]}>Fecha de vencimiento *</Text>
-            <TextInput
-              style={[styles.input, { backgroundColor: colors.surface, color: colors.text, borderColor: colors.border }]}
-              value={expirationDate}
-              onChangeText={setExpirationDate}
-              placeholder="YYYY-MM-DD"
-              placeholderTextColor={colors.textSecondary}
-            />
+            <Host matchContents>
+              <DateTimePicker
+                variant="compact"
+                displayedComponents="date"
+                initialDate={expirationDate}
+                onDateSelected={(date) => setExpirationDate(dateToDateString(date))}
+              />
+            </Host>
           </View>
         </View>
 
@@ -302,6 +395,21 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+  },
+  scanBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 14,
+    borderWidth: 1,
+    marginBottom: 8,
+  },
+  scanBtnText: {
+    fontSize: 14,
+    fontWeight: '600',
   },
   saveBtn: {
     flexDirection: 'row',
